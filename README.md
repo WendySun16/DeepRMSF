@@ -1,6 +1,6 @@
 # DeepRMSF
 ## Introduction
-DeepRMSF is an automated deep-learning based approach for ‘imaging’ the dynamics of RNA at atomic resolution. Starting with a given PDB-formatted structure, DeepRMSF, it is first translated to density map, structure feature in density map is translated by structure. The maps are segmented into a series of density boxes, which served as input for the model. Finally, predicted RMSF subboxes were then merged into an RMSF map as the RMSF prediction map for this RNA.
+DeepRMSF is an automated deep-learning based approach for ‘imaging’ the dynamics of RNA at atomic resolution. Starting with a given PDB-formatted structure, DeepRMSF, it is first translated to density map, structure feature in density map is translated by structure. The maps are segmented into a series of density boxes, which served as input for the model. Finally, predicted RMSF subboxes were then merged into an RMSF map as the RMSF prediction map for this RNA. Source code for DeepRMSF: an automated computational method for RNA dynamics modeling by deep learning
 ## Files
 ### rna_util.py
 This file undergoes the most basic data processing, such as generating simulated maps.
@@ -35,5 +35,5 @@ You can view the **test** folder to learn about the DeepRMSF prediction process.
 ## Supporting softwares
 ### x3DNA-DSSR
 To obtain secondary structure.
-### Chimera
-To obtain simulated maps.
+### UCSF Chimera
+Simulated maps were obtained with UCSF Chimera, developed by the Resource for Biocomputing, Visualization, and Informatics at the University of California, San Francisco, with support from NIH P41-GM103311.
