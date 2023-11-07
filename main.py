@@ -58,18 +58,16 @@ def main():
     test_list = []
     for pdbid in pdbid_list:
         test_list.append(pdbid + ".pth")
-    test_data = rna_concat_data(box_file, test_list, dsize=(40,40,40,40,10), train=False, only_rmsf=False, only_sse=False)
+    test_data = rna_concat_data(box_file, test_list, dsize=(40,40,40,40,10), train=False, only_rmsf=False, only_sse=False, pre=True)
     torch.save(test_data, f"{ori_dir}/test_data.pth")
     
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ['CUDA_VISIBLE_DEVICES'] ='0'
     log_dir = args.log_dir
     record = f"{log_dir}/record.txt"
     # initialize the model, and then call the trained parameters
     model = rmsf_model(in_channels = 424)
     init_weights(model)
     model_file = "/data/model/5/model.pth"
-    state_dict = torch.load(model_file)
+    state_dict = torch.load(model_file, map_location='cpu')
     model_state_dict = model.state_dict()
     for key in state_dict:
         if key[7:] in model_state_dict:
