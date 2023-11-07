@@ -15,7 +15,7 @@ def get_dssr(pdbid, ori_dir):
     path = f"{ori_dir}/{pdbid}"
     pdb = f"{ori_dir}/{pdbid}/{pdbid}.pdb"
     os.chdir(path)
-    os.system('/test/x3dna-dssr -i='f"{pdbid}.pdb"' -o='f"{pdbid}.out"'')
+    os.system('/DeepRMSF/program/dssr-basic-linux/x3dna-dssr -i='f"{pdbid}.pdb"' -o='f"{pdbid}.out"'')
 
 
 def get_file(pdbid, ori_dir):
@@ -61,7 +61,7 @@ def rna_get_smi_map(pdb_file, out_file, res=4, number=0.1, r=1.5):
         number) + ' save ' + str(out_file) + '\n'
                                              'close all')
     chimera_script.close()
-    output = subprocess.check_output(["/test/chimera", '--nogui', chimera_script.name])
+    output = subprocess.check_output(["/DeepRMSF/chimera/bin/chimera", '--nogui', chimera_script.name])
     return output
 
 
@@ -303,14 +303,15 @@ def rna_get_ana_pdb1(pdbid, ori_dir, sim=True, pre=False, res=4):
     """get rmsf_map and sse_map"""
 
     pdb = f"{ori_dir}/{pdbid}/{pdbid}.pdb"
-    ref_pdb = f"{ori_dir}/{pdbid}/{pdbid}_ref.pdb"
-    rmsfxvg = f"{ori_dir}/{pdbid}/{pdbid}.dat"
     mrc = f"{ori_dir}/{pdbid}/{pdbid}_out.mrc"
     sse_list = f"{ori_dir}/{pdbid}/{pdbid}_sse.list"
-    rmsf_list = f"{ori_dir}/{pdbid}/{pdbid}_rmsf.list"
-    if not os.path.exists(rmsf_list):
-        rna_get_rmsf_list(pdb, ref_pdb, rmsfxvg)
+    if not pre:
+        ref_pdb = f"{ori_dir}/{pdbid}/{pdbid}_ref.pdb"
+        rmsfxvg = f"{ori_dir}/{pdbid}/{pdbid}.dat"
         rmsf_list = f"{ori_dir}/{pdbid}/{pdbid}_rmsf.list"
+        if not os.path.exists(rmsf_list):
+            rna_get_rmsf_list(pdb, ref_pdb, rmsfxvg)
+            rmsf_list = f"{ori_dir}/{pdbid}/{pdbid}_rmsf.list"
     if not os.path.exists(sse_list):
         get_dssr(pdbid, ori_dir)
         dssr_pairs = get_file(pdbid, ori_dir)
@@ -318,9 +319,11 @@ def rna_get_ana_pdb1(pdbid, ori_dir, sim=True, pre=False, res=4):
         sse_list = f"{ori_dir}/{pdbid}/{pdbid}_sse.list"
 
     map, sse_map, res_map, resname_map, info = rna_sse2map3(mrc, pdb, sse_list, sim=sim)
-    map2, rmsf_map, info_ = rna_rmsf2map3(mrc, pdb, rmsf_list, sim=sim, pre=pre)
-    assert (map == map2).all()
-    return map, sse_map, res_map, resname_map, rmsf_map, info
+    if not pre:
+        map2, rmsf_map, info_ = rna_rmsf2map3(mrc, pdb, rmsf_list, sim=sim, pre=pre)
+        assert (map == map2).all()
+        return map, sse_map, res_map, resname_map, rmsf_map, info
+    return map, sse_map, res_map, resname_map, info
 
 
 def rna_select_map_for_split2(box, sse_box, res_box, resname_box, rmsf_box, contour_level, pre=False, th1=0.05, th2=0.005):
@@ -348,18 +351,28 @@ def rna_split_map_and_select_back(pdbid, data_dir, pre=False, sim=True, res=4):
     sse_file = f"{data_dir}/{pdbid}/{pdbid}sse_anamap.npy"
     res_file = f"{data_dir}/{pdbid}/{pdbid}res_anamap.npy"
     resname_file = f"{data_dir}/{pdbid}/{pdbid}resname_anamap.npy"
-    rmsf_file = f"{data_dir}/{pdbid}/{pdbid}rmsf_anamap.npy"
-
-    if os.path.exists(sse_file) and os.path.exists(res_file) and os.path.exists(resname_file) and os.path.exists(
-            rmsf_file) and os.path.exists(map_file):
-        map = np.load(map_file)
-        sse_map = np.load(sse_file)
-        res_map = np.load(res_file)
-        resname_map = np.load(resname_file)
-        rmsf_map = np.load(rmsf_file)
+    if not pre:
+        rmsf_file = f"{data_dir}/{pdbid}/{pdbid}rmsf_anamap.npy"
+        
+        if os.path.exists(sse_file) and os.path.exists(res_file) and os.path.exists(resname_file) and os.path.exists(
+                rmsf_file) and os.path.exists(map_file):
+            map = np.load(map_file)
+            sse_map = np.load(sse_file)
+            res_map = np.load(res_file)
+            resname_map = np.load(resname_file)
+            rmsf_map = np.load(rmsf_file)
+        else:
+            return np.empty((0, 40, 40, 40), dtype=np.float32), np.empty((0, 40, 40, 40), dtype=np.int32), np.empty(
+                (0, 40, 40, 40), dtype=np.int32), np.empty((0, 40, 40, 40), dtype=np.int32), np.empty((0, 40, 40, 40), dtype=np.float32), np.nan, np.nan
     else:
-        return np.empty((0, 40, 40, 40), dtype=np.float32), np.empty((0, 40, 40, 40), dtype=np.int32), np.empty(
-            (0, 40, 40, 40), dtype=np.int32), np.empty((0, 40, 40, 40), dtype=np.int32), np.empty((0, 40, 40, 40), dtype=np.float32), np.nan, np.nan
+        if os.path.exists(sse_file) and os.path.exists(res_file) and os.path.exists(resname_file) and os.path.exists(map_file):
+            map = np.load(map_file)
+            sse_map = np.load(sse_file)
+            res_map = np.load(res_file)
+            resname_map = np.load(resname_file)
+        else:
+            return np.empty((0, 40, 40, 40), dtype=np.float32), np.empty((0, 40, 40, 40), dtype=np.int32), np.empty(
+                (0, 40, 40, 40), dtype=np.int32), np.empty((0, 40, 40, 40), dtype=np.int32), np.nan, np.nan
 
     if not sim:
         contour_level = 3 * np.std(map)
@@ -391,9 +404,10 @@ def rna_split_map_and_select_back(pdbid, data_dir, pre=False, sim=True, res=4):
     pad_resname_map[box_size:-box_size, box_size:-box_size, box_size:-box_size] = resname_map
 
     # rmsf_map
-    pad_rmsf_map = np.full((map_size[0] + 2 * box_size, map_size[1] + 2 * box_size, map_size[2] + 2 * box_size), 0,
-                           dtype=np.float32)
-    pad_rmsf_map[box_size:-box_size, box_size:-box_size, box_size:-box_size] = rmsf_map
+    if not pre:
+        pad_rmsf_map = np.full((map_size[0] + 2 * box_size, map_size[1] + 2 * box_size, map_size[2] + 2 * box_size), 0,
+                            dtype=np.float32)
+        pad_rmsf_map[box_size:-box_size, box_size:-box_size, box_size:-box_size] = rmsf_map
 
     start_point = box_size - int((box_size - core_size) / 2)
 
@@ -417,8 +431,9 @@ def rna_split_map_and_select_back(pdbid, data_dir, pre=False, sim=True, res=4):
                        cur_z:cur_z + box_size]
         next_res_box = pad_res_map[cur_x:cur_x + box_size, cur_y:cur_y + box_size, cur_z:cur_z + box_size]
         next_resname_box = pad_resname_map[cur_x:cur_x + box_size, cur_y:cur_y + box_size, cur_z:cur_z + box_size]
-        next_rmsf_box = pad_rmsf_map[cur_x:cur_x + box_size, cur_y:cur_y + box_size,
-                        cur_z:cur_z + box_size]
+        if not pre:
+            next_rmsf_box = pad_rmsf_map[cur_x:cur_x + box_size, cur_y:cur_y + box_size,
+                            cur_z:cur_z + box_size]
         cur_x += core_size
         if (cur_x + (box_size - core_size) / 2 >= map_size[0] + box_size):
             cur_y += core_size
@@ -428,19 +443,31 @@ def rna_split_map_and_select_back(pdbid, data_dir, pre=False, sim=True, res=4):
                 cur_y = start_point  # Reset
                 cur_x = start_point  # Reset
 
-        if (rna_select_map_for_split2(next_box, next_sse_box[10:-10, 10:-10, 10:-10], next_res_box[10:-10, 10:-10, 10:-10],
-                next_resname_box[10:-10, 10:-10, 10:-10], next_rmsf_box[15:-15, 15:-15, 15:-15], contour_level, pre=pre)):
-            box_list.append(next_box)
-            sse_box_list.append(next_sse_box)
-            res_box_list.append(next_res_box)
-            resname_box_list.append(next_resname_box)
-            rmsf_box_list.append(next_rmsf_box)
-            keep_list.append(i)
+        if not pre:
+            if (rna_select_map_for_split2(next_box, next_sse_box[10:-10, 10:-10, 10:-10], next_res_box[10:-10, 10:-10, 10:-10],
+                    next_resname_box[10:-10, 10:-10, 10:-10], next_rmsf_box[15:-15, 15:-15, 15:-15], contour_level, pre=pre)):
+                box_list.append(next_box)
+                sse_box_list.append(next_sse_box)
+                res_box_list.append(next_res_box)
+                resname_box_list.append(next_resname_box)
+                rmsf_box_list.append(next_rmsf_box)
+                keep_list.append(i)
+        else:
+            if (rna_select_map_for_split2(next_box, next_sse_box[10:-10, 10:-10, 10:-10], next_res_box[10:-10, 10:-10, 10:-10],
+                    next_resname_box[10:-10, 10:-10, 10:-10], None, contour_level, pre=pre)):
+                box_list.append(next_box)
+                sse_box_list.append(next_sse_box)
+                res_box_list.append(next_res_box)
+                resname_box_list.append(next_resname_box)
+                keep_list.append(i)
         total_list.append(i)
         i = i + 1
     print(f"the selected maps: {len(keep_list)}")
     print(f"the total maps: {len(total_list)}")
-    return np.asarray(box_list), np.asarray(sse_box_list), np.asarray(res_box_list), np.asarray(resname_box_list), np.asarray(rmsf_box_list), np.asarray(keep_list), np.asarray(total_list)
+    if not pre:
+        return np.asarray(box_list), np.asarray(sse_box_list), np.asarray(res_box_list), np.asarray(resname_box_list), np.asarray(rmsf_box_list), np.asarray(keep_list), np.asarray(total_list)
+    else:
+        return np.asarray(box_list), np.asarray(sse_box_list), np.asarray(res_box_list), np.asarray(resname_box_list), np.asarray(keep_list), np.asarray(total_list)
 
 
 def main():
