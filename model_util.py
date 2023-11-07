@@ -89,7 +89,7 @@ def shuffle_pdb2(list, seed=1):
     return sp_list
 
 
-def rna_concat_data(file_pre, datalist, dsize=(40,40,40,40,10), train=True, only_rmsf=False, only_sse=False):
+def rna_concat_data(file_pre, datalist, dsize=(40,40,40,40,10), train=True, only_rmsf=False, only_sse=False, pre=False):
     c_size = (int((40-dsize[0])/2), int((40-dsize[1])/2), int((40-dsize[2])/2), int((40-dsize[3])/2), int((40-dsize[4])/2))
                                                 
     if train:
@@ -225,10 +225,11 @@ def rna_concat_data(file_pre, datalist, dsize=(40,40,40,40,10), train=True, only
                     cu_data['resname'] = cur_data['resname']
                 else:
                     cu_data['resname'] = cur_data['resname'][:,c_size[3]:-c_size[3],c_size[3]:-c_size[3],c_size[3]:-c_size[3]]
-                if c_size[4] == 0:
-                    cu_data['rmsf'] = cur_data['rmsf']
-                else:
-                    cu_data['rmsf'] = cur_data['rmsf'][:,:,c_size[4]:-c_size[4],c_size[4]:-c_size[4],c_size[4]:-c_size[4]]
+                if not pre:
+                    if c_size[4] == 0:
+                        cu_data['rmsf'] = cur_data['rmsf']
+                    else:
+                        cu_data['rmsf'] = cur_data['rmsf'][:,:,c_size[4]:-c_size[4],c_size[4]:-c_size[4],c_size[4]:-c_size[4]]
 
                 if cur_data.__contains__('keep_list'):
                     cu_data['keep_list'] = cur_data['keep_list']
