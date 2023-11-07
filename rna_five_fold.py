@@ -350,17 +350,21 @@ def test_model_for_rmsf(model, i, log_dir, data_dir, ori_dir, f, sse=False, sse_
             start = time.time()
             item_name = item[:-4]
             # these PDBs do not have RMSF data
-            if item_name == 'pdb5new' or item_name == 'pdb5npm' or item_name == 'pdb5ns3' or item_name == 'pdb4q9q' or item_name == 'pdb3egz':
-                continue
+            if not pre:
+                if item_name == 'pdb5new' or item_name == 'pdb5npm' or item_name == 'pdb5ns3' or item_name == 'pdb4q9q' or item_name == 'pdb3egz':
+                    continue
             print(f"* test * {item_name} \n \n",file=f)
             print(f"* test * {item_name} \n \n")
             pdb = test_Data[item]
             if sse:
                 test_sse = pdb['sse'].to(device)
-            test_data, test_resid, test_resname, test_rmsf = pdb['intensity'].to(device), pdb['resid'].to(device), pdb['resname'].to(device), pdb['rmsf'].to(device)
+            if not pre:
+                test_data, test_resid, test_resname, test_rmsf = pdb['intensity'].to(device), pdb['resid'].to(device), pdb['resname'].to(device), pdb['rmsf'].to(device)
+                test_rmsf_mask = generate_mask(test_rmsf, mask=0, rmsf=True, tensor=True)
+            else:
+                test_data, test_resid, test_resname = pdb['intensity'].to(device), pdb['resid'].to(device), pdb['resname'].to(device)
             keep_list = pdb['keep_list'].to(device)
             
-            test_rmsf_mask = generate_mask(test_rmsf, mask=0, rmsf=True, tensor=True)
             if not sse:   
                 model_rmsf = model(test_data)  
             else:
@@ -369,27 +373,33 @@ def test_model_for_rmsf(model, i, log_dir, data_dir, ori_dir, f, sse=False, sse_
                 test_resname = onehot(test_resname)
                 model_rmsf = model(test_data, sse=test_sse, resid=test_resid, resname=test_resname)
 
-            rmsf_pre = model_rmsf * (test_rmsf_mask) 
-            end = time.time()
-            ttime = end - start
-            time_list[item_name] = ttime
+            if not pre:
+                rmsf_pre = model_rmsf * (test_rmsf_mask)
+                end = time.time()
+                ttime = end - start
+                time_list[item_name] = ttime
 
-            loss1 = loss_fn1(rmsf_pre,test_rmsf)
-            length_rmsf = torch.sum(test_rmsf_mask)
-            loss = loss1        
+                loss1 = loss_fn1(rmsf_pre, test_rmsf)
+                length_rmsf = torch.sum(test_rmsf_mask)
+                loss = loss1
 
-            # PCC
-            rmsf_pree = torch.take(rmsf_pre.flatten(), torch.where(test_rmsf.flatten()!=0)[0])
-            test_rmsff = torch.take(test_rmsf.flatten(), torch.where(test_rmsf.flatten()!=0)[0])
-            if 'cuda' in str(rmsf_pree.device):
-                rmsf_preee = rmsf_pree.cpu().detach().numpy()
-                test_rmsfff = test_rmsff.cpu().detach().numpy()
+                # PCC
+                rmsf_pree = torch.take(rmsf_pre.flatten(), torch.where(test_rmsf.flatten()!=0)[0])
+                test_rmsff = torch.take(test_rmsf.flatten(), torch.where(test_rmsf.flatten()!=0)[0])
+                if 'cuda' in str(rmsf_pree.device):
+                    rmsf_preee = rmsf_pree.cpu().detach().numpy()
+                    test_rmsfff = test_rmsff.cpu().detach().numpy()
+                else:
+                    rmsf_preee = rmsf_pree.detach().numpy()
+                    test_rmsfff = test_rmsff.detach().numpy()
+                cor = round(np.corrcoef(rmsf_preee, test_rmsfff)[0,1], 3)
+                print(f"cor for {item_name}:{cor} \n \n", file=f)
+                cor_list[item_name] = cor
             else:
-                rmsf_preee = rmsf_pree.detach().numpy()
-                test_rmsfff = test_rmsff.detach().numpy()
-            cor = round(np.corrcoef(rmsf_preee, test_rmsfff)[0,1], 3)
-            print(f"cor for {item_name}:{cor} \n \n", file=f)
-            cor_list[item_name] = cor
+                rmsf_pre = model_rmsf
+                end = time.time()
+                ttime = end - start
+                time_list[item_name] = ttime
 
             # predicted values are written to the PDB
             rmsf_pre = torch.squeeze(rmsf_pre, 1)
@@ -424,21 +434,24 @@ def test_model_for_rmsf(model, i, log_dir, data_dir, ori_dir, f, sse=False, sse_
             
             if sse:
                 del test_sse, test_resid, test_resname
-            del test_data, test_rmsf, test_rmsf_mask, rmsf_pre, rmsf_pree, test_rmsff
-            mean_loss = loss / length_rmsf
-            mean_loss_list[item_name] = float(mean_loss.item())
-            print(f"{item_name} loss for rmsf is {mean_loss} \n ", file=f)
+            if not pre:
+                del test_data, test_rmsf, test_rmsf_mask, rmsf_pre, rmsf_pree, test_rmsff
+                mean_loss = loss / length_rmsf
+                mean_loss_list[item_name] = float(mean_loss.item())
+                print(f"{item_name} loss for rmsf is {mean_loss} \n ", file=f)
+            else:
+                del test_data, rmsf_pre
     
+        if not pre:
+            print(f"mean_loss of rmsf for every pdb is {mean_loss_list} \n \n", file=f)
+            print(f"cor of rmsf for every pdb is {cor_list} \n \n", file=f)
+            print(f"cor of rmsf for every pdb is {cor_list} \n \n")
 
-        print(f"mean_loss of rmsf for every pdb is {mean_loss_list} \n \n", file=f)
-        print(f"cor of rmsf for every pdb is {cor_list} \n \n", file=f)
-        print(f"cor of rmsf for every pdb is {cor_list} \n \n")
-
-        test_log = {'cor_list': cor_list,'mean_loss': mean_loss}
-        test_log_file = f"{cur_log_dir}/test_log.npy"
-        np.save(test_log_file,test_log)
-        print(f"test log saved at {test_log_file}", file=f)
-        print(f"test log saved at {test_log_file}")
+            test_log = {'cor_list': cor_list,'mean_loss': mean_loss}
+            test_log_file = f"{cur_log_dir}/test_log.npy"
+            np.save(test_log_file, test_log)
+            print(f"test log saved at {test_log_file}", file=f)
+            print(f"test log saved at {test_log_file}")
 
     return cor_list, time_list
 
