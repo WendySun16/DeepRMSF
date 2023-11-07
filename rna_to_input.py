@@ -17,17 +17,21 @@ def rna_save_ana_map(pdbid_list, data_dir, ori_dir, saved=False, sim=True, pre=F
         for pdbid in tqdm(pdbid_list,desc='save anontated map', total=len(pdbid_list)):
             try:
                 print(f"{pdbid}******************")
-                map, sse_map, res_map, resname_map, rmsf_map, info = rna_get_ana_pdb1(pdbid, ori_dir, sim=sim, pre=pre, res=res)
+                if not pre:
+                    map, sse_map, res_map, resname_map, rmsf_map, info = rna_get_ana_pdb1(pdbid, ori_dir, sim=sim, pre=pre, res=res)
+                else:
+                    map, sse_map, res_map, resname_map, info = rna_get_ana_pdb1(pdbid, ori_dir, sim=sim, pre=pre, res=res)
                 sse_file = f"{data_dir}/{pdbid}/{pdbid}sse_anamap.npy"
                 res_file = f"{data_dir}/{pdbid}/{pdbid}res_anamap.npy"
                 resname_file = f"{data_dir}/{pdbid}/{pdbid}resname_anamap.npy"
-                rmsf_file = f"{data_dir}/{pdbid}/{pdbid}rmsf_anamap.npy"
                 map_file = f"{data_dir}/{pdbid}/{pdbid}_map.npy"
                 np.save(sse_file, sse_map)
                 np.save(res_file, res_map)
                 np.save(resname_file, resname_map)
-                np.save(rmsf_file, rmsf_map)
                 np.save(map_file, map)
+                if not pre:
+                    rmsf_file = f"{data_dir}/{pdbid}/{pdbid}rmsf_anamap.npy"
+                    np.save(rmsf_file, rmsf_map)
                 emd_info[pdbid] = info
             except AssertionError:
                 print(f"{pdbid}:Assertionerror")
@@ -44,20 +48,29 @@ def rna_get_box_list(data_dir, pdbid_list, out_dir, sim=True, pre=False, res=4):
     Sse_boxn_list = np.empty((0,40,40,40),dtype=np.int32)
     Res_boxn_list = np.empty((0,40,40,40),dtype=np.int32)
     Resname_boxn_list = np.empty((0,40,40,40),dtype=np.int32)
-    Rmsf_boxn_list = np.empty((0,40,40,40),dtype=np.float32)
+    if not pre:
+        Rmsf_boxn_list = np.empty((0,40,40,40),dtype=np.float32)
     for pdbid in tqdm(pdbid_list,desc='loop get box list'):
         print('...................................................')
-        box_norm_list, sse_boxn_list, res_boxn_list, resname_boxn_list, rmsf_boxn_list, keep_list, total_list = rna_split_map_and_select_back(pdbid,data_dir, sim=sim, pre=pre, res=res)
+        if not pre:
+            box_norm_list, sse_boxn_list, res_boxn_list, resname_boxn_list, rmsf_boxn_list, keep_list, total_list = rna_split_map_and_select_back(pdbid,data_dir, sim=sim, pre=pre, res=res)
+        else:
+            box_norm_list, sse_boxn_list, res_boxn_list, resname_boxn_list, keep_list, total_list = rna_split_map_and_select_back(pdbid,data_dir, sim=sim, pre=pre, res=res)
         print(f"box_norm_list is {box_norm_list.shape}")
         if (len(box_norm_list) != 0):
             Box_norm_list = np.concatenate((Box_norm_list,box_norm_list), axis=0)
             Sse_boxn_list = np.concatenate((Sse_boxn_list,sse_boxn_list), axis=0)
             Res_boxn_list = np.concatenate((Res_boxn_list,res_boxn_list), axis=0)
             Resname_boxn_list = np.concatenate((Resname_boxn_list,resname_boxn_list), axis=0)
-            Rmsf_boxn_list = np.concatenate((Rmsf_boxn_list,rmsf_boxn_list), axis=0)
+            if not pre:
+                Rmsf_boxn_list = np.concatenate((Rmsf_boxn_list,rmsf_boxn_list), axis=0)
         print('..................................................')
-    torch.save({'intensity':torch.from_numpy(Box_norm_list).unsqueeze_(1),
-            'sse':torch.from_numpy(Sse_boxn_list), 'resid':torch.from_numpy(Res_boxn_list), 'resname':torch.from_numpy(Resname_boxn_list), 'rmsf':torch.from_numpy(Rmsf_boxn_list).unsqueeze_(1), 'keep_list':torch.from_numpy(keep_list), 'total_list':torch.from_numpy(total_list)},out_dir)
+    if not pre:
+        torch.save({'intensity':torch.from_numpy(Box_norm_list).unsqueeze_(1),
+                'sse':torch.from_numpy(Sse_boxn_list), 'resid':torch.from_numpy(Res_boxn_list), 'resname':torch.from_numpy(Resname_boxn_list), 'rmsf':torch.from_numpy(Rmsf_boxn_list).unsqueeze_(1), 'keep_list':torch.from_numpy(keep_list), 'total_list':torch.from_numpy(total_list)},out_dir)
+    else:
+        torch.save({'intensity':torch.from_numpy(Box_norm_list).unsqueeze_(1),
+            'sse':torch.from_numpy(Sse_boxn_list), 'resid':torch.from_numpy(Res_boxn_list), 'resname':torch.from_numpy(Resname_boxn_list), 'keep_list':torch.from_numpy(keep_list), 'total_list':torch.from_numpy(total_list)},out_dir)
     print(f"tensor datafile saved at {out_dir}")
 
 
